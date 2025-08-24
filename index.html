@@ -246,11 +246,55 @@
         .period-selector {
             display: flex;
             gap: 10px;
-            margin-bottom: 25px;
+            margin-bottom: 15px;
             background: white;
             padding: 5px;
             border-radius: 15px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+
+        .period-navigation {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+
+        .nav-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .current-period {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+            flex: 1;
+            margin: 0 15px;
         }
 
         .period-button {
@@ -495,7 +539,13 @@
                 <div class="period-selector">
                     <button class="period-button active" onclick="changePeriod('week')">1週間</button>
                     <button class="period-button" onclick="changePeriod('month')">1ヶ月</button>
-                    <button class="period-button" onclick="changePeriod('year')">1年</button>
+                    <button class="period-button" onclick="changePeriod('quarter')">3ヶ月</button>
+                </div>
+                
+                <div class="period-navigation">
+                    <button class="nav-button" onclick="navigatePeriod('prev')">← 前の期間</button>
+                    <div class="current-period" id="currentPeriod">2024年1月1日〜1月7日</div>
+                    <button class="nav-button" onclick="navigatePeriod('next')">次の期間 →</button>
                 </div>
 
                 <div class="chart-container">
@@ -569,6 +619,7 @@
         // データストレージ
         let data = JSON.parse(localStorage.getItem('smokingData') || '{}');
         let currentPeriod = 'week';
+        let currentDate = new Date();
         let chart = null;
 
         // 初期化
@@ -629,6 +680,9 @@
                 }
                 sleepSelect.appendChild(option);
             }
+            
+            // 期間表示を初期化
+            updatePeriodDisplay();
         }
 
         // タブ切り替え
@@ -649,6 +703,7 @@
                 dataSection.classList.add('active');
                 updateChart();
                 updateStats();
+                updatePeriodDisplay();
             }
         }
 
@@ -713,6 +768,7 @@
         // 期間変更
         function changePeriod(period) {
             currentPeriod = period;
+            currentDate = new Date(); // 現在の日付にリセット
             const buttons = document.querySelectorAll('.period-button');
             buttons.forEach(btn => btn.classList.remove('active'));
             
@@ -722,6 +778,51 @@
 
             updateChart();
             updateStats();
+            updatePeriodDisplay();
+        }
+
+        // 期間ナビゲーション
+        function navigatePeriod(direction) {
+            const days = getPeriodDays(currentPeriod);
+            if (direction === 'prev') {
+                currentDate.setDate(currentDate.getDate() - days);
+            } else {
+                currentDate.setDate(currentDate.getDate() + days);
+            }
+            
+            updateChart();
+            updateStats();
+            updatePeriodDisplay();
+        }
+
+        // 期間の日数を取得
+        function getPeriodDays(period) {
+            switch(period) {
+                case 'week': return 7;
+                case 'month': return 30;
+                case 'quarter': return 90;
+                default: return 7;
+            }
+        }
+
+        // 期間表示を更新
+        function updatePeriodDisplay() {
+            const startDate = new Date(currentDate);
+            const days = getPeriodDays(currentPeriod);
+            startDate.setDate(startDate.getDate() - days + 1);
+            
+            const endDate = new Date(currentDate);
+            
+            let periodText = '';
+            if (currentPeriod === 'week') {
+                periodText = `${startDate.getFullYear()}年${startDate.getMonth() + 1}月${startDate.getDate()}日〜${endDate.getMonth() + 1}月${endDate.getDate()}日`;
+            } else if (currentPeriod === 'month') {
+                periodText = `${startDate.getFullYear()}年${startDate.getMonth() + 1}月${startDate.getDate()}日〜${endDate.getMonth() + 1}月${endDate.getDate()}日`;
+            } else {
+                periodText = `${startDate.getFullYear()}年${startDate.getMonth() + 1}月${startDate.getDate()}日〜${endDate.getMonth() + 1}月${endDate.getDate()}日`;
+            }
+            
+            document.getElementById('currentPeriod').textContent = periodText;
         }
 
         // 統計情報更新
@@ -1029,15 +1130,13 @@
         // 日付範囲取得
         function getDateRange(period) {
             const dates = [];
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const endDate = new Date(currentDate);
+            endDate.setHours(0, 0, 0, 0);
             
-            let days = 7;
-            if (period === 'month') days = 30;
-            if (period === 'year') days = 365;
+            const days = getPeriodDays(period);
             
             for (let i = days - 1; i >= 0; i--) {
-                const date = new Date(today);
+                const date = new Date(endDate);
                 date.setDate(date.getDate() - i);
                 dates.push(date);
             }
