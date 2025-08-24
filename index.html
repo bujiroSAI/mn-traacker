@@ -548,7 +548,24 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
     <script>
+        // Firebase設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyCmJT-PQKPxMEck_Aq8Pn7KP-kEC15PlmI",
+            authDomain: "mn-tracker-dd34c.firebaseapp.com",
+            databaseURL: "https://mn-tracker-dd34c-default-rtdb.firebaseio.com",
+            projectId: "mn-tracker-dd34c",
+            storageBucket: "mn-tracker-dd34c.firebasestorage.app",
+            messagingSenderId: "31912384061",
+            appId: "1:31912384061:web:37405638f13c0c5975a5ac"
+        };
+        
+        // Firebase初期化
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
         // データストレージ
         let data = JSON.parse(localStorage.getItem('smokingData') || '{}');
         let currentPeriod = 'week';
@@ -556,6 +573,20 @@
 
         // 初期化
         function init() {
+            // Firebaseからデータを読み込み
+            database.ref('smokingData').once('value')
+                .then((snapshot) => {
+                    const firebaseData = snapshot.val();
+                    if (firebaseData) {
+                        data = firebaseData;
+                        localStorage.setItem('smokingData', JSON.stringify(data));
+                        console.log('Firebaseからデータを読み込みました');
+                    }
+                })
+                .catch((error) => {
+                    console.error('Firebase読み込みエラー:', error);
+                });
+
             // 日付入力の初期値を今日に設定
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('dateInput').value = today;
@@ -642,7 +673,17 @@
             data[date].health = parseInt(health);
             data[date].sleep = parseFloat(sleep);
 
+            // ローカルストレージに保存
             localStorage.setItem('smokingData', JSON.stringify(data));
+            
+            // Firebaseに保存
+            database.ref('smokingData').set(data)
+                .then(() => {
+                    console.log('データをFirebaseに保存しました');
+                })
+                .catch((error) => {
+                    console.error('Firebase保存エラー:', error);
+                });
 
             // 成功メッセージ表示
             showSuccessMessage();
