@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MN Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 100%;
+            width: 100%;
+            min-height: 100vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 18px;
+            background: white;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab.active {
+            color: #667eea;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .input-section {
+            display: none;
+        }
+
+        .input-section.active {
+            display: block;
+        }
+
+        .date-selector {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .date-label {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .date-input {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            background: white;
+            color: #333;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .input-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .input-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+        }
+
+        .input-card.health {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+        }
+
+        .input-card.sleep {
+            background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+        }
+
+        .input-label {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #333;
+        }
+
+        .input-card.sleep .input-label {
+            color: white;
+        }
+
+        .emoji {
+            font-size: 24px;
+        }
+
+        .select-wrapper {
+            position: relative;
+        }
+
+        .select-input {
+            width: 100%;
+            padding: 15px 40px 15px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            background: white;
+            color: #333;
+            appearance: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .select-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .select-arrow {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #999;
+        }
+
+        .save-button {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+        }
+
+        .save-button:active {
+            transform: translateY(0);
+        }
+
+        .data-section {
+            display: none;
+        }
+
+        .data-section.active {
+            display: block;
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            background: white;
+            padding: 5px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+
+        .period-button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: #999;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .period-button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            position: relative;
+            height: 400px;
+        }
+
+        #chart {
+            width: 100%;
+            height: 100%;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .legend-color {
+            width: 18px;
+            height: 18px;
+            border-radius: 5px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+        }
+
+        .stat-card.cigarette {
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.1) 0%, rgba(245, 87, 108, 0.1) 100%);
+        }
+
+        .stat-card.nagai {
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%);
+        }
+
+        .stat-card.health {
+            background: linear-gradient(135deg, rgba(255, 234, 167, 0.2) 0%, rgba(253, 203, 110, 0.2) 100%);
+        }
+
+        .stat-card.sleep {
+            background: linear-gradient(135deg, rgba(162, 155, 254, 0.2) 0%, rgba(108, 92, 231, 0.2) 100%);
+        }
+
+        .stat-icon {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .stat-value.money {
+            color: #e74c3c;
+        }
+
+        .stat-value.time {
+            color: #3498db;
+        }
+
+        .stat-value.score {
+            color: #f39c12;
+        }
+
+        .stat-value.sleep-avg {
+            color: #6c5ce7;
+        }
+
+        .success-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-size: 18px;
+            font-weight: 700;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            z-index: 1000;
+            animation: popIn 0.5s ease forwards;
+        }
+
+        @keyframes popIn {
+            to {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .fade-out {
+            animation: fadeOut 0.5s ease forwards;
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>🚬 MN Tracker</h1>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('input')">📝 入力</button>
+            <button class="tab" onclick="switchTab('data')">📊 データ</button>
+        </div>
+
+        <div class="content">
+            <div class="input-section active">
+                <div class="date-selector">
+                    <div class="date-label">日付を選択</div>
+                    <input type="date" class="date-input" id="dateInput">
+                </div>
+
+                <div class="input-card">
+                    <div class="input-label">
+                        <span class="emoji">🚬</span>
+                        <span>タバコ</span>
+                    </div>
+                    <div class="select-wrapper">
+                        <select class="select-input" id="cigaretteInput">
+                            <option value="">本数を選択</option>
+                        </select>
+                        <span class="select-arrow">▼</span>
+                    </div>
+                </div>
+
+                <div class="input-card">
+                    <div class="input-label">
+                        <span class="emoji">💨</span>
+                        <span>ナガイ</span>
+                    </div>
+                    <div class="select-wrapper">
+                        <select class="select-input" id="nagaiInput">
+                            <option value="">回数を選択</option>
+                        </select>
+                        <span class="select-arrow">▼</span>
+                    </div>
+                </div>
+
+                <div class="input-card health">
+                    <div class="input-label">
+                        <span class="emoji">✨</span>
+                        <span>元気</span>
+                    </div>
+                    <div class="select-wrapper">
+                        <select class="select-input" id="healthInput">
+                            <option value="">元気度を選択</option>
+                        </select>
+                        <span class="select-arrow">▼</span>
+                    </div>
+                </div>
+
+                <div class="input-card sleep">
+                    <div class="input-label">
+                        <span class="emoji">😴</span>
+                        <span>睡眠時間</span>
+                    </div>
+                    <div class="select-wrapper">
+                        <select class="select-input" id="sleepInput">
+                            <option value="">時間を選択</option>
+                        </select>
+                        <span class="select-arrow">▼</span>
+                    </div>
+                </div>
+
+                <button class="save-button" onclick="saveData()">保存する</button>
+            </div>
+
+            <div class="data-section">
+                <div class="period-selector">
+                    <button class="period-button active" onclick="changePeriod('week')">1週間</button>
+                    <button class="period-button" onclick="changePeriod('month')">1ヶ月</button>
+                    <button class="period-button" onclick="changePeriod('year')">1年</button>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="chart"></canvas>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
+                        <span>タバコ</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
+                        <span>ナガイ</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);"></div>
+                        <span>元気</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);"></div>
+                        <span>睡眠</span>
+                    </div>
+                </div>
+
+                <div class="stats-container">
+                    <div class="stat-card cigarette">
+                        <div class="stat-icon">🚬</div>
+                        <div class="stat-label">タバコ</div>
+                        <div class="stat-value money" id="cigaretteCost">¥0</div>
+                    </div>
+                    <div class="stat-card nagai">
+                        <div class="stat-icon">💨</div>
+                        <div class="stat-label">ナガイ</div>
+                        <div class="stat-value time" id="nagaiTime">0時間</div>
+                    </div>
+                    <div class="stat-card health">
+                        <div class="stat-icon">✨</div>
+                        <div class="stat-label">元気 (平均)</div>
+                        <div class="stat-value score" id="healthScore">0.0点</div>
+                    </div>
+                    <div class="stat-card sleep">
+                        <div class="stat-icon">😴</div>
+                        <div class="stat-label">睡眠 (平均)</div>
+                        <div class="stat-value sleep-avg" id="sleepAvg">0.0時間</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script>
+        // データストレージ
+        let data = JSON.parse(localStorage.getItem('smokingData') || '{}');
+        let currentPeriod = 'week';
+        let chart = null;
+
+        // 初期化
+        function init() {
+            // 日付入力の初期値を今日に設定
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('dateInput').value = today;
+            document.getElementById('dateInput').max = today;
+
+            // セレクトボックスの選択肢を生成
+            const cigaretteSelect = document.getElementById('cigaretteInput');
+            const nagaiSelect = document.getElementById('nagaiInput');
+            const healthSelect = document.getElementById('healthInput');
+            const sleepSelect = document.getElementById('sleepInput');
+
+            for (let i = 0; i <= 20; i++) {
+                const option1 = document.createElement('option');
+                option1.value = i;
+                option1.text = `${i} 本`;
+                cigaretteSelect.appendChild(option1);
+
+                const option2 = document.createElement('option');
+                option2.value = i;
+                option2.text = `${i} 回`;
+                nagaiSelect.appendChild(option2);
+            }
+
+            for (let i = 0; i <= 10; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.text = `${i} 点`;
+                healthSelect.appendChild(option);
+            }
+
+            // 睡眠時間の選択肢（0.5時間刻み）
+            for (let i = 0; i <= 20; i++) {
+                const option = document.createElement('option');
+                const hours = i * 0.5;
+                option.value = hours;
+                if (hours % 1 === 0) {
+                    option.text = `${hours} 時間`;
+                } else {
+                    option.text = `${Math.floor(hours)}時間30分`;
+                }
+                sleepSelect.appendChild(option);
+            }
+        }
+
+        // タブ切り替え
+        function switchTab(tab) {
+            const tabs = document.querySelectorAll('.tab');
+            const inputSection = document.querySelector('.input-section');
+            const dataSection = document.querySelector('.data-section');
+
+            if (tab === 'input') {
+                tabs[0].classList.add('active');
+                tabs[1].classList.remove('active');
+                inputSection.classList.add('active');
+                dataSection.classList.remove('active');
+            } else {
+                tabs[0].classList.remove('active');
+                tabs[1].classList.add('active');
+                inputSection.classList.remove('active');
+                dataSection.classList.add('active');
+                updateChart();
+                updateStats();
+            }
+        }
+
+        // データ保存
+        function saveData() {
+            const date = document.getElementById('dateInput').value;
+            const cigarette = document.getElementById('cigaretteInput').value;
+            const nagai = document.getElementById('nagaiInput').value;
+            const health = document.getElementById('healthInput').value;
+            const sleep = document.getElementById('sleepInput').value;
+
+            if (!date || cigarette === '' || nagai === '' || health === '' || sleep === '') {
+                alert('すべての項目を入力してください');
+                return;
+            }
+
+            if (!data[date]) {
+                data[date] = {};
+            }
+            data[date].cigarette = parseInt(cigarette);
+            data[date].nagai = parseInt(nagai);
+            data[date].health = parseInt(health);
+            data[date].sleep = parseFloat(sleep);
+
+            localStorage.setItem('smokingData', JSON.stringify(data));
+
+            // 成功メッセージ表示
+            showSuccessMessage();
+
+            // 入力をリセット
+            document.getElementById('cigaretteInput').value = '';
+            document.getElementById('nagaiInput').value = '';
+            document.getElementById('healthInput').value = '';
+            document.getElementById('sleepInput').value = '';
+        }
+
+        // 成功メッセージ表示
+        function showSuccessMessage() {
+            const message = document.createElement('div');
+            message.className = 'success-message';
+            message.textContent = '✅ 保存しました！';
+            document.body.appendChild(message);
+
+            setTimeout(() => {
+                message.classList.add('fade-out');
+                setTimeout(() => {
+                    document.body.removeChild(message);
+                }, 500);
+            }, 1500);
+        }
+
+        // 期間変更
+        function changePeriod(period) {
+            currentPeriod = period;
+            const buttons = document.querySelectorAll('.period-button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            if (period === 'week') buttons[0].classList.add('active');
+            else if (period === 'month') buttons[1].classList.add('active');
+            else buttons[2].classList.add('active');
+
+            updateChart();
+            updateStats();
+        }
+
+        // 統計情報更新
+        function updateStats() {
+            const dates = getDateRange(currentPeriod);
+            let totalCigarettes = 0;
+            let totalNagai = 0;
+            let totalHealth = 0;
+            let totalSleep = 0;
+            let healthCount = 0;
+            let sleepCount = 0;
+
+            dates.forEach(date => {
+                const dateStr = date.toISOString().split('T')[0];
+                const dayData = data[dateStr];
+                if (dayData) {
+                    totalCigarettes += dayData.cigarette || 0;
+                    totalNagai += dayData.nagai || 0;
+                    if (dayData.health !== undefined) {
+                        totalHealth += dayData.health;
+                        healthCount++;
+                    }
+                    if (dayData.sleep !== undefined) {
+                        totalSleep += dayData.sleep;
+                        sleepCount++;
+                    }
+                }
+            });
+
+            // タバコの費用計算
+            const cigaretteCost = totalCigarettes * 70;
+            document.getElementById('cigaretteCost').textContent = `¥${cigaretteCost.toLocaleString()}`;
+
+            // ナガイの時間計算（15分単位）
+            const nagaiMinutes = totalNagai * 15;
+            const hours = Math.floor(nagaiMinutes / 60);
+            const minutes = nagaiMinutes % 60;
+            if (hours > 0) {
+                document.getElementById('nagaiTime').textContent = minutes > 0 ? `${hours}時間${minutes}分` : `${hours}時間`;
+            } else {
+                document.getElementById('nagaiTime').textContent = `${minutes}分`;
+            }
+
+            // 元気の平均スコア計算
+            const avgHealth = healthCount > 0 ? (totalHealth / healthCount).toFixed(1) : '0.0';
+            document.getElementById('healthScore').textContent = `${avgHealth}点`;
+
+            // 睡眠時間の平均計算
+            const avgSleep = sleepCount > 0 ? (totalSleep / sleepCount).toFixed(1) : '0.0';
+            document.getElementById('sleepAvg').textContent = `${avgSleep}時間`;
+        }
+
+        // チャート更新
+        function updateChart() {
+            const ctx = document.getElementById('chart').getContext('2d');
+            const dates = getDateRange(currentPeriod);
+            
+            const cigaretteData = [];
+            const nagaiData = [];
+            const healthData = [];
+            const sleepData = [];
+            const labels = [];
+
+            dates.forEach(date => {
+                const dateStr = date.toISOString().split('T')[0];
+                const dayData = data[dateStr] || { cigarette: 0, nagai: 0, health: 0, sleep: 0 };
+                
+                cigaretteData.push(dayData.cigarette);
+                nagaiData.push(dayData.nagai);
+                healthData.push(dayData.health * 2); // 10点満点を20点満点スケールに変換
+                sleepData.push(dayData.sleep);
+                
+                if (currentPeriod === 'week') {
+                    labels.push(date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }));
+                } else if (currentPeriod === 'month') {
+                    if (date.getDate() % 5 === 1) {
+                        labels.push(date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }));
+                    } else {
+                        labels.push('');
+                    }
+                } else {
+                    if (date.getDate() === 1) {
+                        labels.push(date.toLocaleDateString('ja-JP', { month: 'numeric' }) + '月');
+                    } else {
+                        labels.push('');
+                    }
+                }
+            });
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            // グラデーション作成
+            const gradient1 = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient1.addColorStop(0, 'rgba(240, 147, 251, 0.8)');
+            gradient1.addColorStop(1, 'rgba(245, 87, 108, 0.8)');
+
+            const gradient2 = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient2.addColorStop(0, 'rgba(79, 172, 254, 0.8)');
+            gradient2.addColorStop(1, 'rgba(0, 242, 254, 0.8)');
+
+            const gradient3 = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient3.addColorStop(0, 'rgba(255, 234, 167, 0.8)');
+            gradient3.addColorStop(1, 'rgba(253, 203, 110, 0.8)');
+
+            const gradient4 = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient4.addColorStop(0, 'rgba(162, 155, 254, 0.8)');
+            gradient4.addColorStop(1, 'rgba(108, 92, 231, 0.8)');
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'タバコ',
+                        data: cigaretteData,
+                        borderColor: gradient1,
+                        backgroundColor: 'rgba(240, 147, 251, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'y',
+                        pointRadius: 5,
+                        pointBackgroundColor: '#f093fb',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 7
+                    }, {
+                        label: 'ナガイ',
+                        data: nagaiData,
+                        borderColor: gradient2,
+                        backgroundColor: 'rgba(79, 172, 254, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'y1',
+                        pointRadius: 5,
+                        pointBackgroundColor: '#4facfe',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 7
+                    }, {
+                        label: '元気',
+                        data: healthData,
+                        borderColor: gradient3,
+                        backgroundColor: 'rgba(255, 234, 167, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'y',
+                        pointRadius: 5,
+                        pointBackgroundColor: '#ffeaa7',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 7,
+                        borderDash: [5, 5]
+                    }, {
+                        label: '睡眠',
+                        data: sleepData,
+                        borderColor: gradient4,
+                        backgroundColor: 'rgba(162, 155, 254, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'y1',
+                        pointRadius: 5,
+                        pointBackgroundColor: '#a29bfe',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 7,
+                        borderDash: [8, 4]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            borderRadius: 10,
+                            titleFont: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            bodyFont: {
+                                size: 13
+                            },
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        if (context.dataset.label === 'タバコ') {
+                                            label += context.parsed.y + ' 本';
+                                        } else if (context.dataset.label === 'ナガイ') {
+                                            label += context.parsed.y + ' 回';
+                                        } else if (context.dataset.label === '元気') {
+                                            label += (context.parsed.y / 2).toFixed(1) + ' 点';
+                                        } else if (context.dataset.label === '睡眠') {
+                                            label += context.parsed.y.toFixed(1) + ' 時間';
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            max: 20,
+                            min: 0,
+                            title: {
+                                display: true,
+                                text: 'タバコ(本) / 元気(×2)',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                drawOnChartArea: true,
+                                color: function(context) {
+                                    if (context.tick.value > 10) {
+                                        return 'rgba(255, 0, 0, 0.1)';
+                                    }
+                                    return 'rgba(0, 0, 0, 0.05)';
+                                }
+                            },
+                            ticks: {
+                                stepSize: 5,
+                                callback: function(value) {
+                                    return value;
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            max: 10,
+                            min: 0,
+                            title: {
+                                display: true,
+                                text: 'ナガイ(回) / 睡眠(時間)',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                stepSize: 2
+                            }
+                        }
+                    }
+                },
+                plugins: [{
+                    beforeDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const chartArea = chart.chartArea;
+                        const yScale = chart.scales.y;
+                        
+                        // デンジャーゾーンの背景
+                        ctx.save();
+                        ctx.fillStyle = 'rgba(255, 0, 0, 0.05)';
+                        const dangerY = yScale.getPixelForValue(10);
+                        ctx.fillRect(
+                            chartArea.left,
+                            chartArea.top,
+                            chartArea.right - chartArea.left,
+                            dangerY - chartArea.top
+                        );
+                        ctx.restore();
+                    }
+                }]
+            });
+        }
+
+        // 日付範囲取得
+        function getDateRange(period) {
+            const dates = [];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            let days = 7;
+            if (period === 'month') days = 30;
+            if (period === 'year') days = 365;
+            
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                dates.push(date);
+            }
+            
+            return dates;
+        }
+
+        // 初期化実行
+        init();
+    </script>
+</body>
+</html>
