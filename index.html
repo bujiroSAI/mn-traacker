@@ -548,6 +548,11 @@
                     <button class="nav-button" onclick="navigatePeriod('next')">次の期間 →</button>
                 </div>
 
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <button class="nav-button" onclick="debugData()" style="background: #e74c3c;">🐛 デバッグ情報</button>
+                    <button class="nav-button" onclick="refreshDataFromFirebase()" style="background: #27ae60; margin-left: 10px;">🔄 データ更新</button>
+                </div>
+
                 <div class="chart-container">
                     <canvas id="chart"></canvas>
                 </div>
@@ -624,24 +629,40 @@
 
         // 初期化
         function init() {
-            // Firebaseからデータを読み込み
+            // Firebaseからデータを読み込み（ローカルストレージより優先）
             database.ref('smokingData').once('value')
                 .then((snapshot) => {
                     const firebaseData = snapshot.val();
+                    console.log('Firebaseから読み込んだデータ:', firebaseData);
                     if (firebaseData) {
                         data = firebaseData;
                         localStorage.setItem('smokingData', JSON.stringify(data));
                         console.log('Firebaseからデータを読み込みました');
+                        console.log('現在のdataオブジェクト:', data);
+                        
+                        // データ読み込み後にチャートを更新
+                        if (document.querySelector('.data-section').classList.contains('active')) {
+                            updateChart();
+                            updateStats();
+                        }
+                    } else {
+                        console.log('Firebaseにデータがありません');
+                        // Firebaseにデータがない場合はローカルストレージから読み込み
+                        data = JSON.parse(localStorage.getItem('smokingData') || '{}');
                     }
                 })
                 .catch((error) => {
                     console.error('Firebase読み込みエラー:', error);
+                    // エラーの場合はローカルストレージから読み込み
+                    data = JSON.parse(localStorage.getItem('smokingData') || '{}');
                 });
 
             // 日付入力の初期値を今日に設定
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('dateInput').value = today;
-            document.getElementById('dateInput').max = today;
+            // 未来日付の入力も許可（9月以降のデータ入力のため）
+            // document.getElementById('dateInput').max = today;
+            console.log('今日の日付:', today);
 
             // セレクトボックスの選択肢を生成
             const cigaretteSelect = document.getElementById('cigaretteInput');
@@ -683,6 +704,98 @@
             
             // 期間表示を初期化
             updatePeriodDisplay();
+            
+            // 日付変更時のイベントリスナーを追加
+            document.getElementById('dateInput').addEventListener('change', loadExistingData);
+        }
+
+        // 既存データを読み込む関数
+        function loadExistingData() {
+            const selectedDate = document.getElementById('dateInput').value;
+            console.log('選択された日付:', selectedDate);
+            
+            if (selectedDate && data[selectedDate]) {
+                const existingData = data[selectedDate];
+                console.log('既存データを読み込み:', existingData);
+                
+                // 既存データをフォームに設定
+                document.getElementById('cigaretteInput').value = existingData.cigarette || '';
+                document.getElementById('nagaiInput').value = existingData.nagai || '';
+                document.getElementById('healthInput').value = existingData.health || '';
+                document.getElementById('sleepInput').value = existingData.sleep || '';
+                
+                // 編集モードであることを示すメッセージ
+                showEditModeMessage(selectedDate);
+            } else {
+                // 新規データの場合、フォームをリセット
+                document.getElementById('cigaretteInput').value = '';
+                document.getElementById('nagaiInput').value = '';
+                document.getElementById('healthInput').value = '';
+                document.getElementById('sleepInput').value = '';
+                
+                // 新規モードであることを示すメッセージ
+                showNewModeMessage(selectedDate);
+            }
+        }
+
+        // 編集モードメッセージ表示
+        function showEditModeMessage(date) {
+            const message = document.createElement('div');
+            message.className = 'edit-mode-message';
+            message.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: 600;
+                z-index: 1000;
+                animation: slideInRight 0.3s ease;
+            `;
+            message.textContent = `📝 ${date}のデータを編集モード`;
+            document.body.appendChild(message);
+
+            setTimeout(() => {
+                message.style.animation = 'slideOutRight 0.3s ease forwards';
+                setTimeout(() => {
+                    if (document.body.contains(message)) {
+                        document.body.removeChild(message);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // 新規モードメッセージ表示
+        function showNewModeMessage(date) {
+            const message = document.createElement('div');
+            message.className = 'new-mode-message';
+            message.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: 600;
+                z-index: 1000;
+                animation: slideInRight 0.3s ease;
+            `;
+            message.textContent = `✨ ${date}の新規データ入力`;
+            document.body.appendChild(message);
+
+            setTimeout(() => {
+                message.style.animation = 'slideOutRight 0.3s ease forwards';
+                setTimeout(() => {
+                    if (document.body.contains(message)) {
+                        document.body.removeChild(message);
+                    }
+                }, 300);
+            }, 3000);
         }
 
         // タブ切り替え
@@ -701,10 +814,32 @@
                 tabs[1].classList.add('active');
                 inputSection.classList.remove('active');
                 dataSection.classList.add('active');
-                updateChart();
-                updateStats();
-                updatePeriodDisplay();
+                
+                // データタブに切り替える際に最新データを読み込み
+                refreshDataFromFirebase();
             }
+        }
+
+        // Firebaseから最新データを読み込んで更新
+        function refreshDataFromFirebase() {
+            database.ref('smokingData').once('value')
+                .then((snapshot) => {
+                    const firebaseData = snapshot.val();
+                    if (firebaseData) {
+                        data = firebaseData;
+                        localStorage.setItem('smokingData', JSON.stringify(data));
+                        console.log('データタブ切り替え時にFirebaseから最新データを読み込みました');
+                    }
+                    updateChart();
+                    updateStats();
+                    updatePeriodDisplay();
+                })
+                .catch((error) => {
+                    console.error('データ更新エラー:', error);
+                    updateChart();
+                    updateStats();
+                    updatePeriodDisplay();
+                });
         }
 
         // データ保存
@@ -714,6 +849,33 @@
             const nagai = document.getElementById('nagaiInput').value;
             const health = document.getElementById('healthInput').value;
             const sleep = document.getElementById('sleepInput').value;
+
+            console.log('保存しようとしているデータ:', {
+                date: date,
+                cigarette: cigarette,
+                nagai: nagai,
+                health: health,
+                sleep: sleep
+            });
+
+            // 日付の検証
+            if (!date) {
+                alert('日付を選択してください');
+                return;
+            }
+
+            // 日付形式の検証
+            const dateObj = new Date(date);
+            if (isNaN(dateObj.getTime())) {
+                alert('無効な日付です');
+                return;
+            }
+
+            console.log('日付検証:', {
+                originalDate: date,
+                parsedDate: dateObj,
+                isoString: dateObj.toISOString().split('T')[0]
+            });
 
             if (!date || cigarette === '' || nagai === '' || health === '' || sleep === '') {
                 alert('すべての項目を入力してください');
@@ -728,13 +890,18 @@
             data[date].health = parseInt(health);
             data[date].sleep = parseFloat(sleep);
 
+            console.log('保存後のdataオブジェクト:', data);
+            console.log('保存される日付のデータ:', data[date]);
+
             // ローカルストレージに保存
             localStorage.setItem('smokingData', JSON.stringify(data));
+            console.log('ローカルストレージに保存完了');
             
             // Firebaseに保存
             database.ref('smokingData').set(data)
                 .then(() => {
                     console.log('データをFirebaseに保存しました');
+                    console.log('Firebase保存後の確認:', data);
                 })
                 .catch((error) => {
                     console.error('Firebase保存エラー:', error);
@@ -748,6 +915,12 @@
             document.getElementById('nagaiInput').value = '';
             document.getElementById('healthInput').value = '';
             document.getElementById('sleepInput').value = '';
+
+            // データ表示を更新
+            if (document.querySelector('.data-section').classList.contains('active')) {
+                updateChart();
+                updateStats();
+            }
         }
 
         // 成功メッセージ表示
@@ -880,6 +1053,10 @@
             const ctx = document.getElementById('chart').getContext('2d');
             const dates = getDateRange(currentPeriod);
             
+            console.log('updateChart - 現在のdataオブジェクト:', data);
+            console.log('updateChart - 表示期間:', currentPeriod);
+            console.log('updateChart - 表示する日付範囲:', dates.map(d => d.toISOString().split('T')[0]));
+            
             const cigaretteData = [];
             const nagaiData = [];
             const healthData = [];
@@ -889,6 +1066,8 @@
             dates.forEach(date => {
                 const dateStr = date.toISOString().split('T')[0];
                 const dayData = data[dateStr] || { cigarette: 0, nagai: 0, health: 0, sleep: 0 };
+                
+                console.log(`updateChart - ${dateStr}のデータ:`, dayData);
                 
                 cigaretteData.push(dayData.cigarette);
                 nagaiData.push(dayData.nagai);
@@ -910,6 +1089,14 @@
                         labels.push('');
                     }
                 }
+            });
+
+            console.log('updateChart - チャートデータ:', {
+                cigaretteData: cigaretteData,
+                nagaiData: nagaiData,
+                healthData: healthData,
+                sleepData: sleepData,
+                labels: labels
             });
 
             if (chart) {
@@ -1142,6 +1329,67 @@
             }
             
             return dates;
+        }
+
+        // デバッグ情報表示
+        function debugData() {
+            console.log('=== デバッグ情報 ===');
+            console.log('現在のデータ:', data);
+            console.log('現在の期間:', currentPeriod);
+            console.log('現在の日付:', currentDate);
+            
+            // 8/27のデータを特別に確認
+            const targetDate = '2024-08-27';
+            console.log(`${targetDate}のデータ:`, data[targetDate]);
+            
+            // ローカルストレージの確認
+            const localData = localStorage.getItem('smokingData');
+            console.log('ローカルストレージのデータ:', localData);
+            
+            // チャート情報
+            if (chart) {
+                console.log('チャートデータ:', chart.data.datasets);
+                console.log('チャートラベル:', chart.data.labels);
+            } else {
+                console.log('チャートが初期化されていません');
+            }
+            
+            // 統計情報の計算
+            const dates = getDateRange(currentPeriod);
+            let totalCigarettes = 0;
+            let totalNagai = 0;
+            let totalHealth = 0;
+            let totalSleep = 0;
+            let healthCount = 0;
+            let sleepCount = 0;
+
+            dates.forEach(date => {
+                const dateStr = date.toISOString().split('T')[0];
+                const dayData = data[dateStr];
+                if (dayData) {
+                    totalCigarettes += dayData.cigarette || 0;
+                    totalNagai += dayData.nagai || 0;
+                    if (dayData.health !== undefined) {
+                        totalHealth += dayData.health;
+                        healthCount++;
+                    }
+                    if (dayData.sleep !== undefined) {
+                        totalSleep += dayData.sleep;
+                        sleepCount++;
+                    }
+                }
+            });
+
+            console.log('統計情報:', {
+                totalCigarettes: totalCigarettes,
+                totalNagai: totalNagai,
+                totalHealth: totalHealth,
+                totalSleep: totalSleep,
+                avgHealth: healthCount > 0 ? (totalHealth / healthCount).toFixed(1) : '0.0',
+                avgSleep: sleepCount > 0 ? (totalSleep / sleepCount).toFixed(1) : '0.0'
+            });
+            
+            alert('デバッグ情報をコンソールに出力しました。F12キーを押して開発者ツールのコンソールを確認してください。');
         }
 
         // 初期化実行
