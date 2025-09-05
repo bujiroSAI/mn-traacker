@@ -548,10 +548,6 @@
                     <button class="nav-button" onclick="navigatePeriod('next')">次の期間 →</button>
                 </div>
 
-                <div style="text-align: center; margin-bottom: 15px;">
-                    <button class="nav-button" onclick="debugData()" style="background: #e74c3c;">🐛 デバッグ情報</button>
-                    <button class="nav-button" onclick="refreshDataFromFirebase()" style="background: #27ae60; margin-left: 10px;">🔄 データ更新</button>
-                </div>
 
                 <div class="chart-container">
                     <canvas id="chart"></canvas>
@@ -1331,66 +1327,6 @@
             return dates;
         }
 
-        // デバッグ情報表示
-        function debugData() {
-            console.log('=== デバッグ情報 ===');
-            console.log('現在のデータ:', data);
-            console.log('現在の期間:', currentPeriod);
-            console.log('現在の日付:', currentDate);
-            
-            // 8/27のデータを特別に確認
-            const targetDate = '2024-08-27';
-            console.log(`${targetDate}のデータ:`, data[targetDate]);
-            
-            // ローカルストレージの確認
-            const localData = localStorage.getItem('smokingData');
-            console.log('ローカルストレージのデータ:', localData);
-            
-            // チャート情報
-            if (chart) {
-                console.log('チャートデータ:', chart.data.datasets);
-                console.log('チャートラベル:', chart.data.labels);
-            } else {
-                console.log('チャートが初期化されていません');
-            }
-            
-            // 統計情報の計算
-            const dates = getDateRange(currentPeriod);
-            let totalCigarettes = 0;
-            let totalNagai = 0;
-            let totalHealth = 0;
-            let totalSleep = 0;
-            let healthCount = 0;
-            let sleepCount = 0;
-
-            dates.forEach(date => {
-                const dateStr = date.toISOString().split('T')[0];
-                const dayData = data[dateStr];
-                if (dayData) {
-                    totalCigarettes += dayData.cigarette || 0;
-                    totalNagai += dayData.nagai || 0;
-                    if (dayData.health !== undefined) {
-                        totalHealth += dayData.health;
-                        healthCount++;
-                    }
-                    if (dayData.sleep !== undefined) {
-                        totalSleep += dayData.sleep;
-                        sleepCount++;
-                    }
-                }
-            });
-
-            console.log('統計情報:', {
-                totalCigarettes: totalCigarettes,
-                totalNagai: totalNagai,
-                totalHealth: totalHealth,
-                totalSleep: totalSleep,
-                avgHealth: healthCount > 0 ? (totalHealth / healthCount).toFixed(1) : '0.0',
-                avgSleep: sleepCount > 0 ? (totalSleep / sleepCount).toFixed(1) : '0.0'
-            });
-            
-            alert('デバッグ情報をコンソールに出力しました。F12キーを押して開発者ツールのコンソールを確認してください。');
-        }
 
         // 初期化実行
         init();
