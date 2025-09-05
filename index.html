@@ -618,47 +618,25 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         // データストレージ
-        let data = JSON.parse(localStorage.getItem('smokingData') || '{}');
+        let data = {};
         let currentPeriod = 'week';
         let currentDate = new Date();
         let chart = null;
+        let dataLoaded = false;
 
         // 初期化
         function init() {
-            // Firebaseからデータを読み込み（ローカルストレージより優先）
-            database.ref('smokingData').once('value')
-                .then((snapshot) => {
-                    const firebaseData = snapshot.val();
-                    console.log('Firebaseから読み込んだデータ:', firebaseData);
-                    if (firebaseData) {
-                        data = firebaseData;
-                        localStorage.setItem('smokingData', JSON.stringify(data));
-                        console.log('Firebaseからデータを読み込みました');
-                        console.log('現在のdataオブジェクト:', data);
-                        
-                        // データ読み込み後にチャートを更新
-                        if (document.querySelector('.data-section').classList.contains('active')) {
-                            updateChart();
-                            updateStats();
-                        }
-                    } else {
-                        console.log('Firebaseにデータがありません');
-                        // Firebaseにデータがない場合はローカルストレージから読み込み
-                        data = JSON.parse(localStorage.getItem('smokingData') || '{}');
-                    }
-                })
-                .catch((error) => {
-                    console.error('Firebase読み込みエラー:', error);
-                    // エラーの場合はローカルストレージから読み込み
-                    data = JSON.parse(localStorage.getItem('smokingData') || '{}');
-                });
-
+            // まずローカルストレージからデータを読み込み（初期表示用）
+            const localData = JSON.parse(localStorage.getItem('smokingData') || '{}');
+            data = localData;
+            dataLoaded = true;
+            
             // 日付入力の初期値を今日に設定
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('dateInput').value = today;
-            // 未来日付の入力も許可（9月以降のデータ入力のため）
-            // document.getElementById('dateInput').max = today;
-            console.log('今日の日付:', today);
+            
+            // Firebaseから最新データを読み込み（バックグラウンドで）
+            loadDataFromFirebase();
 
             // セレクトボックスの選択肢を生成
             const cigaretteSelect = document.getElementById('cigaretteInput');
@@ -703,6 +681,34 @@
             
             // 日付変更時のイベントリスナーを追加
             document.getElementById('dateInput').addEventListener('change', loadExistingData);
+        }
+
+        // Firebaseからデータを読み込む関数
+        function loadDataFromFirebase() {
+            database.ref('smokingData').once('value')
+                .then((snapshot) => {
+                    const firebaseData = snapshot.val();
+                    console.log('Firebaseから読み込んだデータ:', firebaseData);
+                    
+                    if (firebaseData) {
+                        // Firebaseのデータでローカルデータを更新
+                        data = firebaseData;
+                        localStorage.setItem('smokingData', JSON.stringify(data));
+                        console.log('Firebaseからデータを読み込みました');
+                        console.log('現在のdataオブジェクト:', data);
+                        
+                        // データが更新されたので、表示を更新
+                        if (document.querySelector('.data-section').classList.contains('active')) {
+                            updateChart();
+                            updateStats();
+                        }
+                    } else {
+                        console.log('Firebaseにデータがありません');
+                    }
+                })
+                .catch((error) => {
+                    console.error('Firebase読み込みエラー:', error);
+                });
         }
 
         // 既存データを読み込む関数
@@ -812,31 +818,10 @@
                 dataSection.classList.add('active');
                 
                 // データタブに切り替える際に最新データを読み込み
-                refreshDataFromFirebase();
+                loadDataFromFirebase();
             }
         }
 
-        // Firebaseから最新データを読み込んで更新
-        function refreshDataFromFirebase() {
-            database.ref('smokingData').once('value')
-                .then((snapshot) => {
-                    const firebaseData = snapshot.val();
-                    if (firebaseData) {
-                        data = firebaseData;
-                        localStorage.setItem('smokingData', JSON.stringify(data));
-                        console.log('データタブ切り替え時にFirebaseから最新データを読み込みました');
-                    }
-                    updateChart();
-                    updateStats();
-                    updatePeriodDisplay();
-                })
-                .catch((error) => {
-                    console.error('データ更新エラー:', error);
-                    updateChart();
-                    updateStats();
-                    updatePeriodDisplay();
-                });
-        }
 
         // データ保存
         function saveData() {
@@ -860,17 +845,23 @@
                 return;
             }
 
-            // 日付形式の検証
-            const dateObj = new Date(date);
+            // 日付形式の検証（厳密に）
+            const dateObj = new Date(date + 'T00:00:00');
             if (isNaN(dateObj.getTime())) {
                 alert('無効な日付です');
                 return;
             }
 
+            // 日付が正しく解析されているか確認
+            const expectedDate = dateObj.toISOString().split('T')[0];
+            if (expectedDate !== date) {
+                console.warn('日付の不一致:', { input: date, parsed: expectedDate });
+            }
+
             console.log('日付検証:', {
                 originalDate: date,
                 parsedDate: dateObj,
-                isoString: dateObj.toISOString().split('T')[0]
+                isoString: expectedDate
             });
 
             if (!date || cigarette === '' || nagai === '' || health === '' || sleep === '') {
